@@ -46,17 +46,22 @@ export default function Login() {
           <div className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>Masuk untuk mengelola dashboard.</div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label className="form-label">Email</label>
             <input
               type="email"
               className="input"
+              name="admin-login-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@tokokamu.com"
               required
               autoFocus
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore="true"
             />
           </div>
           <div className="form-group">
@@ -64,10 +69,15 @@ export default function Login() {
             <input
               type="password"
               className="input"
+              name="admin-login-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore="true"
             />
           </div>
           {error && <p className="text-danger" style={{ fontSize: 12.5, marginBottom: 14 }}>{error}</p>}
