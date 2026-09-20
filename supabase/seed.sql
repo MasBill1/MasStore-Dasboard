@@ -43,7 +43,7 @@ insert into account_fields (product_id, label, key, type, required, visible_to_c
 
 insert into whatsapp_templates (id, type, name, content) values
   ('wa-pricelist', 'Pricelist', 'Pricelist Default', E'{product_name}\n\nDurasi: {duration}\nHarga: {price}\nStock: {stock_status}\nGaransi: {warranty_duration}\n\nJika berminat silakan order.\n\n{store_name}'),
-  ('wa-delivery', 'Account Delivery', 'Account Delivery Default', E'Halo {customer_name},\n\nBerikut detail pembelian kamu.\n\n{product_name}\nDurasi: {duration}\n\nGARANSI\nDurasi: {warranty_duration}\nBerlaku sampai: {warranty_expiry}\n\nKETENTUAN GARANSI\n{warranty_terms}\n\nTerima kasih sudah order di {store_name}.'),
+  ('wa-delivery', 'Account Delivery', 'Account Delivery Default', E'Halo {customer_name},\n\nTerima kasih sudah order di {store_name}! Berikut struk & detail akun kamu.\n\nSTRUK PEMBELIAN\nID Transaksi: {transaction_id}\nProduk: {product_name}\nDurasi: {duration}\nTotal: {total}\nTanggal: {purchase_date}\n\nGARANSI\nDurasi: {warranty_duration}\nBerlaku sampai: {warranty_expiry}\n\nKETENTUAN GARANSI\n{warranty_terms}\n\nTerima kasih sudah order di {store_name}.'),
   ('wa-receipt', 'Receipt', 'Struk Pembelian', E'Terima kasih {customer_name}!\n\nID Transaksi: {transaction_id}\nProduk: {product_name}\nQty: {quantity}\nTotal: {total}\nTanggal: {purchase_date}\n\n{store_name}'),
   ('wa-warranty', 'Warranty', 'Info Garansi', E'Halo {customer_name},\n\nInfo garansi untuk pembelian {product_name}:\n\nBerlaku sampai: {warranty_expiry}\n\nKetentuan:\n{warranty_terms}\n\n{store_name}')
 on conflict (id) do nothing;

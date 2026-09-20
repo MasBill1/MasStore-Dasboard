@@ -9,6 +9,7 @@ import TransactionDetail from './pages/TransactionDetail';
 import WhatsappTemplates from './pages/WhatsappTemplates';
 import SettingsPage from './pages/Settings';
 import PublicCatalog from './pages/PublicCatalog';
+import CatalogProductDetail from './pages/CatalogProductDetail';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -17,6 +18,7 @@ export default function App() {
     <Routes>
       {/* Public — no login required, this is the link you share with customers */}
       <Route path="/catalog" element={<PublicCatalog />} />
+      <Route path="/catalog/:familyName" element={<CatalogProductDetail />} />
       <Route path="/login" element={<Login />} />
 
       {/* Admin — requires login once Supabase Auth is configured */}

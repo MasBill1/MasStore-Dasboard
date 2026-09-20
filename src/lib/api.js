@@ -11,6 +11,7 @@ function mapProductFromDb(row, fields = []) {
     categoryId: row.category_id,
     description: row.description,
     duration: row.duration,
+    imageUrl: row.image_url || null,
     buyPrice: Number(row.buy_price),
     sellPrice: Number(row.sell_price),
     discount: Number(row.discount),
@@ -46,6 +47,7 @@ function mapProductToDb(p) {
     category_id: p.categoryId,
     description: p.description,
     duration: p.duration,
+    image_url: p.imageUrl || null,
     buy_price: p.buyPrice,
     sell_price: p.sellPrice,
     discount: p.discount,
@@ -207,6 +209,21 @@ export async function setProductActive(id, isActive) {
   if (error) throw error;
 }
 
+// Uploads a product image to the 'product-images' storage bucket and returns
+// its public URL. Only works once Supabase is configured and the person is
+// logged in (storage write policy requires an authenticated session).
+export async function uploadProductImage(file) {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from('product-images').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 // ----------------------------------------------------------------------------
 // Sales
 // ----------------------------------------------------------------------------
@@ -249,6 +266,10 @@ export async function fetchStoreSettings() {
     secondaryColor: data.secondary_color,
     pricelistFooter: data.pricelist_footer,
     defaultWarrantyText: data.default_warranty_text,
+    trustCustomerCount: data.trust_customer_count || '100+',
+    trustAvgRating: data.trust_avg_rating || '4.9',
+    trustDeliveryTime: data.trust_delivery_time || '< 5 Mnt',
+    trustGuaranteePercent: data.trust_guarantee_percent || '100%',
   };
 }
 
@@ -261,6 +282,10 @@ export async function updateStoreSettings(settings) {
     secondary_color: settings.secondaryColor,
     pricelist_footer: settings.pricelistFooter,
     default_warranty_text: settings.defaultWarrantyText,
+    trust_customer_count: settings.trustCustomerCount,
+    trust_avg_rating: settings.trustAvgRating,
+    trust_delivery_time: settings.trustDeliveryTime,
+    trust_guarantee_percent: settings.trustGuaranteePercent,
   }).eq('id', 1);
   if (error) throw error;
 }

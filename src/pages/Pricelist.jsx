@@ -103,7 +103,7 @@ export default function Pricelist() {
                   <Badge tone={stock.tone}>{stock.label}</Badge>
                 </div>
                 <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 12 }}>{p.name}</div>
-                <div className="text-muted mt-4" style={{ fontSize: 12.5, minHeight: 32 }}>{p.description}</div>
+                <div className="text-muted mt-4" style={{ fontSize: 12.5, minHeight: 32, whiteSpace: 'pre-line' }}>{p.description}</div>
                 <div className="divider" />
                 <div className="flex-between">
                   <span className="text-faint" style={{ fontSize: 12 }}>Durasi</span>
@@ -180,7 +180,7 @@ export default function Pricelist() {
             </div>
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 24 }}>
               <div style={{ fontSize: 20, fontWeight: 800 }}>{pngProduct.name}</div>
-              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>{pngProduct.description}</div>
+              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6, whiteSpace: 'pre-line' }}>{pngProduct.description}</div>
               <div style={{ height: 1, background: 'rgba(255,255,255,0.2)', margin: '18px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
                 <span style={{ opacity: 0.75 }}>Durasi</span><span style={{ fontWeight: 700 }}>{pngProduct.duration}</span>

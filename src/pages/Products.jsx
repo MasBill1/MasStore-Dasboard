@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Plus, Search, Pencil, Trash2, Package, Power } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, Power, ImageUp, X as XIcon } from 'lucide-react';
 import Layout from '../components/Layout';
 import { Badge, Modal, EmptyState } from '../components/ui';
 import AccountTemplateBuilder from '../components/AccountTemplateBuilder';
 import { useAppData } from '../data/AppDataContext';
-import { formatCurrency, getFinalPrice, getProfit, stockStatusMeta } from '../utils/helpers';
+import { isSupabaseConfigured } from '../lib/config';
+import { uploadProductImage } from '../lib/api';
+import { formatCurrency, getFinalPrice, getProfit, stockStatusMeta, getProductTile } from '../utils/helpers';
 
 const emptyProduct = {
   id: null,
@@ -22,6 +24,7 @@ const emptyProduct = {
   warrantyUnit: 'days',
   warrantyTerms: '',
   warrantyInstructions: '',
+  imageUrl: null,
   isActive: true,
   fields: [],
 };
@@ -37,6 +40,30 @@ export default function Products() {
   const [form, setForm] = useState(emptyProduct);
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function handleImageSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isSupabaseConfigured) {
+      alert('Upload gambar butuh koneksi ke Supabase (isi .env / Vercel Environment Variables dulu).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 5MB.');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const url = await uploadProductImage(file);
+      setForm((f) => ({ ...f, imageUrl: url }));
+    } catch (err) {
+      alert('Gagal upload gambar: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  }
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -53,6 +80,10 @@ export default function Products() {
   }
 
   function openAdd() {
+    if (categories.length === 0) {
+      alert('Buat Category dulu sebelum menambahkan produk (menu Categories di sidebar).');
+      return;
+    }
     setForm({ ...emptyProduct, categoryId: categories[0]?.id || '', fields: [] });
     setActiveTab('general');
     setModalOpen(true);
@@ -66,6 +97,11 @@ export default function Products() {
 
   async function saveProduct() {
     if (!form.name.trim()) return;
+    if (!form.categoryId) {
+      alert('Pilih Category dulu (tab General). Kalau belum ada, buat dulu di menu Categories.');
+      setActiveTab('general');
+      return;
+    }
     const payload = { ...form, familyName: form.familyName?.trim() || form.name.trim() };
     setSaving(true);
     try {
@@ -115,6 +151,14 @@ export default function Products() {
         </div>
       </div>
 
+      {categories.length === 0 && (
+        <div className="card card-pad" style={{ background: 'var(--warning-soft)', border: '1px solid #F0DCA8', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--warning)', fontWeight: 600 }}>
+            Belum ada Category. Buat minimal 1 category dulu di menu <strong>Categories</strong> sebelum menambahkan produk.
+          </p>
+        </div>
+      )}
+
       <div className="filter-bar">
         <div className="search-box">
           <Search size={15} />
@@ -158,11 +202,21 @@ export default function Products() {
                 <tbody>
                   {filtered.map((p) => {
                     const stock = stockStatusMeta(p.stockStatus);
+                    const tile = getProductTile(p.familyName || p.name);
                     return (
                       <tr key={p.id}>
                         <td>
-                          <div className="table-cell-strong">{p.name}</div>
-                          <div className="text-faint" style={{ fontSize: 11.5 }}>{p.duration}</div>
+                          <div className="flex-row">
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt="" className="product-tile-sm" style={{ objectFit: 'cover', borderRadius: 9 }} />
+                            ) : (
+                              <div className="product-tile product-tile-sm" style={{ background: tile.gradient }}>{tile.initials}</div>
+                            )}
+                            <div>
+                              <div className="table-cell-strong">{p.name}</div>
+                              <div className="text-faint" style={{ fontSize: 11.5 }}>{p.duration}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="table-cell-muted">{categoryName(p.categoryId)}</td>
                         <td className="table-cell-strong">{formatCurrency(getFinalPrice(p))}</td>
@@ -191,10 +245,18 @@ export default function Products() {
             <div className="row-cards show-mobile" style={{ padding: '0 16px 16px' }}>
               {filtered.map((p) => {
                 const stock = stockStatusMeta(p.stockStatus);
+                const tile = getProductTile(p.familyName || p.name);
                 return (
                   <div className="row-card" key={p.id}>
                     <div className="row-card-top">
-                      <div className="row-card-title">{p.name}</div>
+                      <div className="flex-row">
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt="" className="product-tile-sm" style={{ objectFit: 'cover', borderRadius: 9 }} />
+                        ) : (
+                          <div className="product-tile product-tile-sm" style={{ background: tile.gradient }}>{tile.initials}</div>
+                        )}
+                        <div className="row-card-title">{p.name}</div>
+                      </div>
                       <Badge tone={p.isActive ? 'purple' : 'neutral'}>{p.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
                     </div>
                     <div className="row-card-line"><span>Category</span><span>{categoryName(p.categoryId)}</span></div>
@@ -236,6 +298,43 @@ export default function Products() {
 
         {activeTab === 'general' && (
           <>
+            <div className="flex-row" style={{ marginBottom: 18, alignItems: 'flex-start' }}>
+              {form.imageUrl ? (
+                <div style={{ position: 'relative' }}>
+                  <img
+                    src={form.imageUrl}
+                    alt=""
+                    className="product-tile-md"
+                    style={{ objectFit: 'cover', borderRadius: 14 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-icon btn-sm"
+                    style={{ position: 'absolute', top: -8, right: -8, borderRadius: '50%' }}
+                    onClick={() => setForm({ ...form, imageUrl: null })}
+                    title="Hapus gambar"
+                  >
+                    <XIcon size={12} />
+                  </button>
+                </div>
+              ) : (
+                (() => {
+                  const tile = getProductTile(form.familyName || form.name || '?');
+                  return <div className="product-tile product-tile-md" style={{ background: tile.gradient }}>{tile.initials}</div>;
+                })()
+              )}
+              <div style={{ flex: 1 }}>
+                <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                  <ImageUp size={14} /> {uploadingImage ? 'Uploading...' : form.imageUrl ? 'Ganti Gambar' : 'Upload Gambar'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} disabled={uploadingImage} />
+                </label>
+                <p className="text-faint mt-8" style={{ fontSize: 11.5 }}>
+                  {form.imageUrl
+                    ? 'Gambar ini dipakai di Katalog Customer & Products.'
+                    : 'Belum ada gambar — tile huruf otomatis dipakai sebagai fallback. Max 5MB.'}
+                </p>
+              </div>
+            </div>
             <div className="form-group">
               <label className="form-label">Product Name <span className="req">*</span></label>
               <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Netflix Premium" />

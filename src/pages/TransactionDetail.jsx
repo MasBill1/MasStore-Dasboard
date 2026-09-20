@@ -85,7 +85,7 @@ export default function TransactionDetail() {
           <div className="page-subtitle">Dibuat pada {formatDate(sale.purchaseDate)}</div>
         </div>
         <div className="page-header-actions">
-          <button className="btn btn-secondary" onClick={sendAccountWhatsApp}><Send size={14} /> Send Account via WhatsApp</button>
+          <button className="btn btn-secondary" onClick={sendAccountWhatsApp}><Send size={14} /> Send Struk & Akun via WhatsApp</button>
           <button className="btn btn-secondary" onClick={generatePng}><ImageDown size={14} /> Generate PNG</button>
         </div>
       </div>

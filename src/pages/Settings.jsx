@@ -48,9 +48,9 @@ export default function Settings() {
       </div>
 
       <div className="tabs">
-        {['store', 'branding', 'pricelist', 'whatsapp'].map((t) => (
+        {['store', 'branding', 'pricelist', 'trust', 'whatsapp'].map((t) => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'store' ? 'Store' : t === 'branding' ? 'Branding' : t === 'pricelist' ? 'Pricelist' : 'WhatsApp'}
+            {t === 'store' ? 'Store' : t === 'branding' ? 'Branding' : t === 'pricelist' ? 'Pricelist' : t === 'trust' ? 'Trust Section' : 'WhatsApp'}
           </button>
         ))}
       </div>
@@ -102,6 +102,32 @@ export default function Settings() {
             <div className="form-group">
               <label className="form-label">Default Warranty Text</label>
               <textarea className="textarea" value={settings.defaultWarrantyText} onChange={(e) => set('defaultWarrantyText', e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {tab === 'trust' && (
+          <>
+            <p className="text-muted" style={{ fontSize: 12.5, marginBottom: 16 }}>
+              Statistik ini ditampilkan di section "Kenapa Memilih Kami" di halaman Katalog Customer. Isi dengan angka asli — jangan mengarang, biar kredibel.
+            </p>
+            <div className="grid-cols-2">
+              <div className="form-group">
+                <label className="form-label">Jumlah Pelanggan</label>
+                <input className="input" value={settings.trustCustomerCount} onChange={(e) => set('trustCustomerCount', e.target.value)} placeholder="100+" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Rating Rata-rata</label>
+                <input className="input" value={settings.trustAvgRating} onChange={(e) => set('trustAvgRating', e.target.value)} placeholder="4.9" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Rata-rata Waktu Kirim</label>
+                <input className="input" value={settings.trustDeliveryTime} onChange={(e) => set('trustDeliveryTime', e.target.value)} placeholder="< 5 Mnt" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Persentase Garansi</label>
+                <input className="input" value={settings.trustGuaranteePercent} onChange={(e) => set('trustGuaranteePercent', e.target.value)} placeholder="100%" />
+              </div>
             </div>
           </>
         )}

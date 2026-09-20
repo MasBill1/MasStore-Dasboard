@@ -25,6 +25,7 @@ create table if not exists products (
   category_id text references categories(id) on delete set null,
   description text default '',
   duration text default '',
+  image_url text,
   buy_price numeric default 0,
   sell_price numeric default 0,
   discount numeric default 0,
@@ -108,6 +109,10 @@ create table if not exists store_settings (
   secondary_color text default '#4B2BBF',
   pricelist_footer text default '',
   default_warranty_text text default '',
+  trust_customer_count text default '100+',
+  trust_avg_rating text default '4.9',
+  trust_delivery_time text default '< 5 Mnt',
+  trust_guarantee_percent text default '100%',
   constraint single_row check (id = 1)
 );
 
@@ -162,3 +167,15 @@ create policy "sales_all_auth" on sales for all using (auth.role() = 'authentica
 
 -- ---- whatsapp_templates: HANYA admin ----
 create policy "whatsapp_templates_all_auth" on whatsapp_templates for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+-- ============================================================================
+-- Storage bucket for product images
+-- ============================================================================
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do nothing;
+
+create policy "product_images_select_public" on storage.objects for select using (bucket_id = 'product-images');
+create policy "product_images_insert_auth" on storage.objects for insert with check (bucket_id = 'product-images' and auth.role() = 'authenticated');
+create policy "product_images_update_auth" on storage.objects for update using (bucket_id = 'product-images' and auth.role() = 'authenticated');
+create policy "product_images_delete_auth" on storage.objects for delete using (bucket_id = 'product-images' and auth.role() = 'authenticated');

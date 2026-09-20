@@ -11,6 +11,10 @@ export const storeSettings = {
   secondaryColor: '#4B2BBF',
   pricelistFooter: 'Harga sewaktu-waktu dapat berubah. Order sebelum kehabisan stock ya!',
   defaultWarrantyText: 'Garansi berlaku selama masa aktif, tidak termasuk kesalahan pengguna.',
+  trustCustomerCount: '100+',
+  trustAvgRating: '4.9',
+  trustDeliveryTime: '< 5 Mnt',
+  trustGuaranteePercent: '100%',
 };
 
 export const categories = [
@@ -378,10 +382,14 @@ Jika berminat silakan order.
     content:
 `Halo {customer_name},
 
-Berikut detail pembelian kamu.
+Terima kasih sudah order di {store_name}! Berikut struk & detail akun kamu.
 
-{product_name}
+STRUK PEMBELIAN
+ID Transaksi: {transaction_id}
+Produk: {product_name}
 Durasi: {duration}
+Total: {total}
+Tanggal: {purchase_date}
 
 DETAIL AKUN
 {email}

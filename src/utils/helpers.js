@@ -54,6 +54,30 @@ export function stockStatusMeta(value) {
   return stockStatusOptions.find((s) => s.value === value) || stockStatusOptions[0];
 }
 
+// Deterministic gradient + initials "logo tile" for a product, based on its
+// name. No image upload needed — same product always gets the same look.
+const GRADIENT_PALETTE = [
+  ['#6D4AFF', '#4B2BBF'],
+  ['#00C2A8', '#0E7C7B'],
+  ['#FF6B9D', '#C2385A'],
+  ['#FFA24B', '#D9711B'],
+  ['#4F8EF7', '#1B4FD9'],
+  ['#B24BFF', '#6D1FBF'],
+  ['#25C36B', '#0E8A45'],
+  ['#FF5E5E', '#C21F1F'],
+];
+
+export function getProductTile(name = '') {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  const [from, to] = GRADIENT_PALETTE[hash % GRADIENT_PALETTE.length];
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const initials = words.length === 1
+    ? words[0].slice(0, 2).toUpperCase()
+    : (words[0][0] + words[1][0]).toUpperCase();
+  return { gradient: `linear-gradient(135deg, ${from}, ${to})`, initials: initials || '?' };
+}
+
 // Build a WhatsApp deep link (no API needed).
 // If `phone` is explicitly an empty string, no number is attached and
 // WhatsApp will let the user pick a contact/chat themselves.
@@ -133,16 +157,28 @@ export function groupProductsByFamily(productList) {
   }));
 }
 
-export function buildOrderMessage(product, category, storeSettings) {
+export function buildOrderMessage(product, category, storeSettings, quantity = 1) {
   const finalPrice = getFinalPrice(product);
   const values = {
     product_name: product.name,
     category: category?.name || '',
     duration: product.duration,
     price: formatCurrency(finalPrice),
+    quantity: String(quantity),
+    total: formatCurrency(finalPrice * quantity),
     store_name: storeSettings?.storeName || '',
   };
-  const template =
+  const template = quantity > 1
+    ?
+`Halo {store_name}, saya mau order:
+
+{product_name}
+Durasi: {duration}
+Harga: {price} x {quantity}
+Total: {total}
+
+Apakah stock masih tersedia?`
+    :
 `Halo {store_name}, saya mau order:
 
 {product_name}
@@ -153,6 +189,8 @@ Apakah stock masih tersedia?`;
   return renderTemplate(template, values);
 }
 
+// Combined message: proof of purchase (struk) + account credentials
+// (dynamic per product's account template) in a single WhatsApp message.
 export function buildAccountDeliveryMessage(sale, storeSettings) {
   const accountLines = (sale.accountTemplateSnapshot || [])
     .filter((f) => f.visibleToCustomer)
@@ -162,8 +200,13 @@ export function buildAccountDeliveryMessage(sale, storeSettings) {
 
   const values = {
     customer_name: sale.customerName,
+    transaction_id: sale.id,
     product_name: sale.productName,
     duration: sale.duration,
+    quantity: String(sale.quantity),
+    total: formatCurrency(sale.total),
+    payment_method: sale.paymentMethod || '-',
+    purchase_date: formatDate(sale.purchaseDate),
     warranty_duration: sale.warrantyDuration ? unitLabel(sale.warrantyUnit, sale.warrantyDuration) : 'Tanpa Garansi',
     warranty_expiry: sale.warrantyExpiry ? formatDate(sale.warrantyExpiry) : '-',
     warranty_terms: sale.warrantyTerms || '-',
@@ -173,10 +216,16 @@ export function buildAccountDeliveryMessage(sale, storeSettings) {
   let msg =
 `Halo {customer_name},
 
-Berikut detail pembelian kamu.
+Terima kasih sudah order di {store_name}! Berikut struk & detail akun kamu.
 
-{product_name}
+STRUK PEMBELIAN
+ID Transaksi: {transaction_id}
+Produk: {product_name}
 Durasi: {duration}
+Qty: {quantity}
+Total: {total}
+Metode Bayar: {payment_method}
+Tanggal: {purchase_date}
 
 DETAIL AKUN
 `;
@@ -190,7 +239,7 @@ Berlaku sampai: {warranty_expiry}
 KETENTUAN GARANSI
 {warranty_terms}
 
-Jika mengalami kendala, silakan hubungi kami sesuai ketentuan garansi.
+Jika mengalami kendala, silakan hubungi kami sesuai ketentuan garansi (screenshot pesan ini bisa dipakai sebagai bukti pembelian saat klaim).
 
 Terima kasih sudah order di {store_name}.`, values);
   return msg;
