@@ -128,6 +128,10 @@ export function AppDataProvider({ children }) {
   function getSale(id) {
     return sales.find((s) => s.id === id);
   }
+  async function removeSale(id) {
+    if (isSupabaseConfigured) await api.deleteSale(id);
+    setSales((prev) => prev.filter((s) => s.id !== id));
+  }
 
   // ---- WhatsApp Templates ----
   async function editWhatsappTemplate(id, content) {
@@ -160,6 +164,7 @@ export function AppDataProvider({ children }) {
       toggleProductActive,
       addSale,
       getSale,
+      removeSale,
       editWhatsappTemplate,
       editStoreSettings,
     }),

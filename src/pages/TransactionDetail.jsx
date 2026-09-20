@@ -2,10 +2,10 @@ import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import {
-  ArrowLeft, Eye, EyeOff, Copy, Send, ImageDown, ShieldCheck, ShieldAlert, Check,
+  ArrowLeft, Eye, EyeOff, Copy, Send, ImageDown, ShieldCheck, ShieldAlert, Check, Trash2,
 } from 'lucide-react';
 import Layout from '../components/Layout';
-import { Badge, EmptyState } from '../components/ui';
+import { Badge, EmptyState, Modal } from '../components/ui';
 import { useAppData } from '../data/AppDataContext';
 import {
   formatCurrency, formatDate, getWarrantyStatus, unitLabel,
@@ -15,12 +15,14 @@ import {
 export default function TransactionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getSale, storeSettings, loading } = useAppData();
+  const { getSale, removeSale, storeSettings, loading } = useAppData();
   const sale = getSale(id);
   const [visible, setVisible] = useState({});
   const [copiedField, setCopiedField] = useState(null);
   const cardRef = useRef(null);
   const [renderPng, setRenderPng] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (loading) {
     return <Layout title="Transaction"><p className="text-muted">Memuat data...</p></Layout>;
@@ -76,6 +78,17 @@ export default function TransactionDetail() {
     }, 50);
   }
 
+  async function confirmDeleteSale() {
+    setDeleting(true);
+    try {
+      await removeSale(sale.id);
+      navigate('/sales');
+    } catch (err) {
+      alert('Gagal menghapus transaksi: ' + err.message);
+      setDeleting(false);
+    }
+  }
+
   return (
     <Layout title="Transaction Detail">
       <div className="page-header">
@@ -87,8 +100,26 @@ export default function TransactionDetail() {
         <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={sendAccountWhatsApp}><Send size={14} /> Send Struk & Akun via WhatsApp</button>
           <button className="btn btn-secondary" onClick={generatePng}><ImageDown size={14} /> Generate PNG</button>
+          <button className="btn btn-danger" onClick={() => setDeleteConfirmOpen(true)}><Trash2 size={14} /> Delete</button>
         </div>
       </div>
+
+      <Modal
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Delete Transaction"
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={() => setDeleteConfirmOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={confirmDeleteSale} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete'}</button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13.5 }}>
+          Yakin ingin menghapus transaksi <strong>{sale.id}</strong> ({sale.customerName} — {sale.productName})?
+          Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi laporan revenue/profit.
+        </p>
+      </Modal>
 
       <div className="grid-2">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

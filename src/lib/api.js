@@ -238,6 +238,11 @@ export async function createSale(sale) {
   if (error) throw error;
 }
 
+export async function deleteSale(id) {
+  const { error } = await supabase.from('sales').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ----------------------------------------------------------------------------
 // WhatsApp Templates
 // ----------------------------------------------------------------------------
