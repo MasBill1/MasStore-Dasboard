@@ -3,15 +3,48 @@ import { supabase } from './supabaseClient';
 // ----------------------------------------------------------------------------
 // Mappers: DB (snake_case) <-> App (camelCase)
 // ----------------------------------------------------------------------------
-function mapProductFromDb(row, fields = []) {
+export function slugify(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// Produk Utama (tabel products): name, category, description, image, is_active, sort_order
+function mapMasterFromDb(row) {
   return {
     id: row.id,
     name: row.name,
-    familyName: row.family_name,
+    slug: row.slug || slugify(row.name),
     categoryId: row.category_id,
-    description: row.description,
-    duration: row.duration,
+    description: row.description || '',
     imageUrl: row.image_url || null,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    variants: [],
+  };
+}
+
+function mapMasterToDb(p) {
+  return {
+    name: p.name.trim(),
+    family_name: p.name.trim(),
+    slug: slugify(p.name),
+    category_id: p.categoryId,
+    description: p.description || '',
+    image_url: p.imageUrl || null,
+    is_active: p.isActive,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Varian (tabel product_variants): harga, stok, garansi, field akun
+function mapVariantFromDb(row, fields = []) {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    groupName: row.group_name || '',
+    label: row.label,
+    duration: row.duration || '',
     buyPrice: Number(row.buy_price),
     sellPrice: Number(row.sell_price),
     discount: Number(row.discount),
@@ -23,10 +56,8 @@ function mapProductFromDb(row, fields = []) {
     warrantyInstructions: row.warranty_instructions,
     isActive: row.is_active,
     sortOrder: row.sort_order,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
     fields: fields
-      .filter((f) => f.product_id === row.id)
+      .filter((f) => f.variant_id === row.id)
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((f) => ({
         id: f.id,
@@ -40,24 +71,21 @@ function mapProductFromDb(row, fields = []) {
   };
 }
 
-function mapProductToDb(p) {
+function mapVariantToDb(v) {
   return {
-    name: p.name,
-    family_name: p.familyName || p.name,
-    category_id: p.categoryId,
-    description: p.description,
-    duration: p.duration,
-    image_url: p.imageUrl || null,
-    buy_price: p.buyPrice,
-    sell_price: p.sellPrice,
-    discount: p.discount,
-    stock_status: p.stockStatus,
-    warranty_enabled: p.warrantyEnabled,
-    warranty_duration: p.warrantyDuration,
-    warranty_unit: p.warrantyUnit,
-    warranty_terms: p.warrantyTerms,
-    warranty_instructions: p.warrantyInstructions,
-    is_active: p.isActive,
+    group_name: v.groupName?.trim() || null,
+    label: v.label.trim(),
+    duration: v.duration || '',
+    buy_price: v.buyPrice,
+    sell_price: v.sellPrice,
+    discount: v.discount,
+    stock_status: v.stockStatus,
+    warranty_enabled: v.warrantyEnabled,
+    warranty_duration: v.warrantyDuration,
+    warranty_unit: v.warrantyUnit,
+    warranty_terms: v.warrantyTerms,
+    warranty_instructions: v.warrantyInstructions,
+    is_active: v.isActive,
     updated_at: new Date().toISOString(),
   };
 }
@@ -98,6 +126,7 @@ function mapSaleToDb(s) {
     customer_name: s.customerName,
     customer_whatsapp: s.customerWhatsapp,
     product_id: s.productId,
+    variant_id: s.variantId || null,
     product_name: s.productName,
     product_description: s.productDescription,
     category_name: s.categoryName,
@@ -148,57 +177,36 @@ export async function deleteCategory(id) {
 }
 
 // ----------------------------------------------------------------------------
-// Products (+ account fields)
+// Katalog: Produk Utama -> Varian (+ account fields per varian)
 // ----------------------------------------------------------------------------
-export async function fetchProducts() {
-  const [{ data: products, error: pErr }, { data: fields, error: fErr }] = await Promise.all([
-    supabase.from('products').select('*').order('sort_order'),
-    supabase.from('account_fields').select('*').order('sort_order'),
-  ]);
+export async function fetchCatalog() {
+  const [{ data: products, error: pErr }, { data: variants, error: vErr }, { data: fields, error: fErr }] =
+    await Promise.all([
+      supabase.from('products').select('*').order('sort_order').order('created_at'),
+      supabase.from('product_variants').select('*').order('sort_order').order('created_at'),
+      supabase.from('account_fields').select('*').order('sort_order'),
+    ]);
   if (pErr) throw pErr;
+  if (vErr) throw vErr;
   if (fErr) throw fErr;
-  return products.map((p) => mapProductFromDb(p, fields));
+  const masters = products.map(mapMasterFromDb);
+  const byId = new Map(masters.map((m) => [m.id, m]));
+  variants.forEach((v) => byId.get(v.product_id)?.variants.push(mapVariantFromDb(v, fields)));
+  return masters;
 }
 
 export async function createProduct(product) {
-  const { data, error } = await supabase.from('products').insert(mapProductToDb(product)).select().single();
+  const { data, error } = await supabase.from('products').insert(mapMasterToDb(product)).select().single();
   if (error) throw error;
-  if (product.fields?.length) {
-    const rows = product.fields.map((f, i) => ({
-      product_id: data.id,
-      label: f.label,
-      key: f.key,
-      type: f.type,
-      required: f.required,
-      visible_to_customer: f.visibleToCustomer,
-      sort_order: i + 1,
-    }));
-    const { error: fErr } = await supabase.from('account_fields').insert(rows);
-    if (fErr) throw fErr;
-  }
   return data.id;
 }
 
 export async function updateProduct(id, product) {
-  const { error } = await supabase.from('products').update(mapProductToDb(product)).eq('id', id);
+  const { error } = await supabase.from('products').update(mapMasterToDb(product)).eq('id', id);
   if (error) throw error;
-  // Simplest safe approach: replace all fields for this product.
-  await supabase.from('account_fields').delete().eq('product_id', id);
-  if (product.fields?.length) {
-    const rows = product.fields.map((f, i) => ({
-      product_id: id,
-      label: f.label,
-      key: f.key,
-      type: f.type,
-      required: f.required,
-      visible_to_customer: f.visibleToCustomer,
-      sort_order: i + 1,
-    }));
-    const { error: fErr } = await supabase.from('account_fields').insert(rows);
-    if (fErr) throw fErr;
-  }
 }
 
+// Menghapus Produk Utama ikut menghapus semua variannya (cascade).
 export async function deleteProduct(id) {
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
@@ -206,6 +214,54 @@ export async function deleteProduct(id) {
 
 export async function setProductActive(id, isActive) {
   const { error } = await supabase.from('products').update({ is_active: isActive }).eq('id', id);
+  if (error) throw error;
+}
+
+function fieldRows(variantId, fields = []) {
+  return fields.map((f, i) => ({
+    variant_id: variantId,
+    label: f.label,
+    key: f.key,
+    type: f.type,
+    required: f.required,
+    visible_to_customer: f.visibleToCustomer,
+    sort_order: i + 1,
+  }));
+}
+
+export async function createVariant(productId, variant) {
+  const { data, error } = await supabase
+    .from('product_variants')
+    .insert({ ...mapVariantToDb(variant), product_id: productId })
+    .select()
+    .single();
+  if (error) throw error;
+  if (variant.fields?.length) {
+    const { error: fErr } = await supabase.from('account_fields').insert(fieldRows(data.id, variant.fields));
+    if (fErr) throw fErr;
+  }
+  return data.id;
+}
+
+export async function updateVariant(id, variant) {
+  const { error } = await supabase.from('product_variants').update(mapVariantToDb(variant)).eq('id', id);
+  if (error) throw error;
+  // Ganti seluruh field akun varian ini.
+  const { error: dErr } = await supabase.from('account_fields').delete().eq('variant_id', id);
+  if (dErr) throw dErr;
+  if (variant.fields?.length) {
+    const { error: fErr } = await supabase.from('account_fields').insert(fieldRows(id, variant.fields));
+    if (fErr) throw fErr;
+  }
+}
+
+export async function deleteVariant(id) {
+  const { error } = await supabase.from('product_variants').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function setVariantActive(id, isActive) {
+  const { error } = await supabase.from('product_variants').update({ is_active: isActive }).eq('id', id);
   if (error) throw error;
 }
 
